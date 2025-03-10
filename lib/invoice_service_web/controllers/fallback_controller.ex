@@ -22,6 +22,20 @@ defmodule InvoiceServiceWeb.FallbackController do
     |> render(:"404")
   end
 
+  def call(conn, {:error, :client}) do
+    conn
+    |> put_status(:unprocessable_entity)
+    |> put_view(html: InvoiceServiceWeb.ErrorHTML, json: InvoiceServiceWeb.ErrorJSON)
+    |> render(:"422")
+  end
+
+  def call(conn, {:error, :internal_server_error}) do
+    conn
+    |> put_status(:internal_server_error)
+    |> put_view(html: InvoiceServiceWeb.ErrorHTML, json: InvoiceServiceWeb.ErrorJSON)
+    |> render(:"500")
+  end
+
   def call(conn, %{errors: %{detail: "Internal Server Error"}}) do
     conn
     |> put_status(:internal_server_error)

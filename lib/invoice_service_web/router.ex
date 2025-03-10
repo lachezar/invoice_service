@@ -25,6 +25,7 @@ defmodule InvoiceServiceWeb.Router do
     resources "/invoices", InvoiceController, only: [:index, :show]
     get "/invoices/sender/:sender_id", InvoiceController, :list_by_sender_id
     post "/invoices/:invoice_id/pay", InvoiceController, :trigger_payment
+    get "/invoices/:invoice_id/file", InvoiceController, :download
   end
 
   # Enable LiveDashboard in development

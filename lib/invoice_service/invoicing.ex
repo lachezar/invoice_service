@@ -4,9 +4,11 @@ defmodule InvoiceService.Invoicing do
   """
 
   import Ecto.Query, warn: false
+  require Logger
   alias InvoiceService.Repo
 
   alias InvoiceService.Invoicing.Invoice
+  alias InvoiceService.Invoicing.FileRepository
 
   @doc """
   Returns the list of invoices.
@@ -27,16 +29,20 @@ defmodule InvoiceService.Invoicing do
 
   def trigger_payment(consumer_id, invoice_id) do
     invoice =
-      Invoice |> where(id: ^invoice_id, receiver_id: ^consumer_id, is_payable: true) |> Repo.one()
+      Invoice |> where(id: ^invoice_id, receiver_id: ^consumer_id) |> Repo.one()
 
-    if invoice == nil do
-      {:error, :no_invoice_to_pay}
-    else
-      IO.inspect(invoice)
-      IO.puts("About to trigger payment...")
-      IO.puts("Triggering payment...")
-      IO.puts("Payment completed...")
-      invoice |> Invoice.mark_as_paid_changeset() |> Repo.update()
+    case invoice do
+      nil ->
+        {:error, :not_found}
+
+      %Invoice{is_payable: false} ->
+        {:error, :invoice_not_payable}
+
+      invoice ->
+        Logger.debug("About to trigger payment for #{inspect(invoice)}")
+        Logger.debug("Triggering payment...")
+        Logger.debug("Payment completed...")
+        invoice |> Invoice.mark_as_paid_changeset() |> Repo.update()
     end
   end
 
@@ -56,72 +62,35 @@ defmodule InvoiceService.Invoicing do
   """
   def get_invoice!(id), do: Repo.get!(Invoice, id)
 
-  @doc """
-  Creates a invoice.
-
-  ## Examples
-
-      iex> create_invoice(%{field: value})
-      {:ok, %Invoice{}}
-
-      iex> create_invoice(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def create_invoice(sender_id, %{} = attr) do
+  def create_invoice(sender_id, %{"content" => content} = attr) when is_binary(content) do
     id = Ecto.UUID.generate()
-    # store the file here
-    %Invoice{id: id, sender_id: sender_id}
-    |> Invoice.create_changeset(attr)
-    |> Repo.insert()
+
+    with :ok <- FileRepository.store(id, content),
+         {:ok, invoice} <-
+           %Invoice{id: id, sender_id: sender_id}
+           |> Invoice.create_changeset(attr)
+           |> Repo.insert() do
+      {:ok, invoice}
+    else
+      {:error, %Ecto.Changeset{}} = err -> err
+      err -> err
+    end
   end
 
-  @doc """
-  Updates a invoice.
-
-  ## Examples
-
-      iex> update_invoice(invoice, %{field: new_value})
-      {:ok, %Invoice{}}
-
-      iex> update_invoice(invoice, %{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def update_invoice(%Invoice{} = _invoice, _attrs) do
-    :not_implemented
-    # invoice
-    # |> Invoice.changeset(attrs)
-    # |> Repo.update()
+  def create_invoice(_, _) do
+    {:error, :client}
   end
 
-  @doc """
-  Deletes a invoice.
+  def download_file(consumer_id, invoice_id) do
+    invoice = Invoice |> where(id: ^invoice_id, receiver_id: ^consumer_id) |> Repo.one()
 
-  ## Examples
-
-      iex> delete_invoice(invoice)
-      {:ok, %Invoice{}}
-
-      iex> delete_invoice(invoice)
-      {:error, %Ecto.Changeset{}}
-
-  """
-  def delete_invoice(%Invoice{} = invoice) do
-    Repo.delete(invoice)
-  end
-
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking invoice changes.
-
-  ## Examples
-
-      iex> change_invoice(invoice)
-      %Ecto.Changeset{data: %Invoice{}}
-
-  """
-  def change_invoice(%Invoice{} = _invoice, _attrs \\ %{}) do
-    # Invoice.changeset(invoice, attrs)
-    :not_implemented
+    if invoice != nil do
+      case FileRepository.retrieve(invoice_id) do
+        {:ok, content} -> {:ok, {content, invoice.file_type}}
+        _err -> {:error, :not_found}
+      end
+    else
+      {:error, :not_found}
+    end
   end
 end

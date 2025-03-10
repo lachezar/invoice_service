@@ -12,9 +12,10 @@ defmodule InvoiceService.InvoicingFixtures do
       InvoiceService.Invoicing.create_invoice(
         42,
         Enum.into(attrs, %{
-          file_type: "application/pdf",
-          is_payable: true,
-          receiver_id: 43
+          "file_type" => "application/pdf",
+          "is_payable" => true,
+          "receiver_id" => 43,
+          "content" => "aGVsbG8="
         })
       )
 

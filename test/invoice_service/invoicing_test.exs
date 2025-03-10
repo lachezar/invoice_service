@@ -9,9 +9,10 @@ defmodule InvoiceService.InvoicingTest do
     import InvoiceService.InvoicingFixtures
 
     @invalid_attrs %{
-      sender_id: nil,
-      file_type: nil,
-      receiver_id: nil
+      "sender_id" => nil,
+      "file_type" => nil,
+      "receiver_id" => nil,
+      "content" => nil
     }
 
     test "list_invoices/0 returns all invoices" do
@@ -26,8 +27,9 @@ defmodule InvoiceService.InvoicingTest do
 
     test "create_invoice/2 with valid data creates a invoice" do
       valid_attrs = %{
-        file_type: "application/pdf",
-        receiver_id: 43
+        "file_type" => "application/pdf",
+        "receiver_id" => 43,
+        "content" => "aGVsbG8="
       }
 
       assert {:ok, %Invoice{} = invoice} = Invoicing.create_invoice(42, valid_attrs)
@@ -39,8 +41,14 @@ defmodule InvoiceService.InvoicingTest do
     end
 
     test "create_invoice/2 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Invoicing.create_invoice(-1, @invalid_attrs)
-      assert {:error, %Ecto.Changeset{}} = Invoicing.create_invoice(42, @invalid_attrs)
+      assert {:error, %Ecto.Changeset{}} =
+               Invoicing.create_invoice(-1, %{@invalid_attrs | "content" => ""})
+
+      assert {:error, %Ecto.Changeset{}} =
+               Invoicing.create_invoice(42, %{@invalid_attrs | "content" => ""})
+
+      assert {:error, :client} =
+               Invoicing.create_invoice(42, Map.delete(@invalid_attrs, "content"))
     end
   end
 end

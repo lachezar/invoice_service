@@ -31,16 +31,32 @@ defmodule InvoiceServiceWeb.InvoiceController do
       {:ok, invoice} ->
         render(conn, :show, invoice: invoice)
 
-      {:error, :no_invoice_to_pay} ->
+      {:error, :invoice_not_payable} ->
         send_resp(conn, 409, Jason.encode!(%{error: "Invoice already paid"}))
 
+      {:error, :not_found} ->
+        {:error, :not_found}
+
       _ ->
-        InvoiceServiceWeb.ErrorJSON.render("500.json", %{})
+        {:error, :internal_server_error}
     end
   end
 
   def show(conn, %{"id" => id}) do
     invoice = Invoicing.get_invoice!(id)
     render(conn, :show, invoice: invoice)
+  end
+
+  def download(
+        %Plug.Conn{assigns: %{consumer_id: consumer_id}} = conn,
+        %{"invoice_id" => invoice_id}
+      ) do
+    case Invoicing.download_file(consumer_id, invoice_id) do
+      {:ok, {content, content_type}} ->
+        conn |> put_resp_header("content-type", content_type) |> send_resp(200, content)
+
+      {:error, :not_found} ->
+        {:error, :not_found}
+    end
   end
 end

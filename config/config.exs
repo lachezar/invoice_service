@@ -9,7 +9,8 @@ import Config
 
 config :invoice_service,
   ecto_repos: [InvoiceService.Repo],
-  generators: [timestamp_type: :utc_datetime]
+  generators: [timestamp_type: :utc_datetime],
+  file_repository_folder: "/tmp"
 
 # Configures the endpoint
 config :invoice_service, InvoiceServiceWeb.Endpoint,
