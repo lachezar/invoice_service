@@ -24,7 +24,7 @@ defmodule InvoiceService.Invoicing.Invoice do
   end
 
   @doc false
-  def mark_as_paid_changeset(invoice) do
+  def mark_as_paid_changeset(%__MODULE__{is_payable: true} = invoice) do
     invoice |> cast(%{is_payable: false}, [:is_payable])
   end
 end

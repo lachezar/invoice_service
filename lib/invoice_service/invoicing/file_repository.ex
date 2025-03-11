@@ -4,10 +4,16 @@ defmodule InvoiceService.Invoicing.FileRepository do
     abs_path = Path.join(folder, filename)
 
     with {:ok, content} <- Base.decode64(base64_content),
+         :ok <-
+           (case File.exists?(abs_path) do
+              true -> {:error, :file_exists}
+              false -> :ok
+            end),
          :ok <- File.write(abs_path, content) do
       :ok
     else
       :error -> {:error, :client}
+      {:error, :file_exists} -> {:error, :internal_server_error}
       err -> err
     end
   end
